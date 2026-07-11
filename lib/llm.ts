@@ -3,11 +3,6 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 
-const groq = createOpenAI({
-  baseURL: "https://api.groq.com/openai/v1",
-  apiKey: process.env.GROQ_API_KEY || "",
-});
-
 export const PROVIDERS = [
   { id: "anthropic:claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet (Anthropic)" },
   { id: "google:gemini-1.5-flash", name: "Gemini 1.5 Flash (Google)" },
@@ -24,13 +19,21 @@ export async function generateAIResponse(
   let model;
 
   if (modelId.startsWith("anthropic:")) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
     model = anthropic(modelId.replace("anthropic:", ""));
   } else if (modelId.startsWith("google:")) {
+    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     model = google(modelId.replace("google:", ""));
   } else if (modelId.startsWith("groq:")) {
+    if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY is not set");
+    const groq = createOpenAI({
+      baseURL: "https://api.groq.com/openai/v1",
+      apiKey: process.env.GROQ_API_KEY,
+    });
     model = groq(modelId.replace("groq:", ""));
   } else {
     // Default to anthropic
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
     model = anthropic("claude-3-5-sonnet-20240620");
   }
 
@@ -38,8 +41,7 @@ export async function generateAIResponse(
     model,
     system: systemPrompt,
     messages,
-    maxTokens: maxTokens,
-  } as any);
+  });
 
   return result.text;
 }
