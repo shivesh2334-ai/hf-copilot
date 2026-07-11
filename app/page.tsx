@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HFPatientInput, HFEngineOutput } from "@/lib/types";
+import { PROVIDERS } from "@/lib/llm";
 import PatientForm from "@/components/PatientForm";
 import ResultPanel from "@/components/ResultPanel";
 import QueryBot from "@/components/QueryBot";
@@ -17,6 +18,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessResult | null>(null);
   const [lastInput, setLastInput] = useState<HFPatientInput | null>(null);
+  const [selectedModel, setSelectedModel] = useState(PROVIDERS[0].id);
 
   async function handleSubmit(input: HFPatientInput) {
     setLoading(true);
@@ -27,7 +29,7 @@ export default function Home() {
       const res = await fetch("/api/assess", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ input, modelId: selectedModel }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Request failed");
       const data = await res.json();
@@ -50,6 +52,22 @@ export default function Home() {
           renal-function-adapted GDMT, investigation, and rehabilitation plan. Decision support
           only — always apply clinical judgement.
         </p>
+        
+        <div className="mt-6 flex items-center gap-3">
+          <label className="text-sm font-medium text-ink">AI Model:</label>
+          <select 
+            className="rounded-md border border-ink/20 px-3 py-1.5 text-sm outline-none focus:border-vein focus:ring-1 focus:ring-vein"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={loading}
+          >
+            {PROVIDERS.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <PatientForm onSubmit={handleSubmit} loading={loading} />
@@ -59,7 +77,7 @@ export default function Home() {
       {result && (
         <div className="mt-10 space-y-6">
           <ResultPanel result={result} />
-          {lastInput && <QueryBot input={lastInput} engineOutput={result.engineOutput} narrative={result.narrative} />}
+          {lastInput && <QueryBot input={lastInput} engineOutput={result.engineOutput} narrative={result.narrative} modelId={selectedModel} />}
         </div>
       )}
     </main>

@@ -5,7 +5,7 @@ import { HFPatientInput, HFEngineOutput } from "@/lib/types";
 
 interface Msg { role: "user" | "assistant"; content: string }
 
-export default function QueryBot({ input, engineOutput, narrative }: { input: HFPatientInput; engineOutput: HFEngineOutput; narrative: string }) {
+export default function QueryBot({ input, engineOutput, narrative, modelId }: { input: HFPatientInput; engineOutput: HFEngineOutput; narrative: string; modelId?: string }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function QueryBot({ input, engineOutput, narrative }: { input: HF
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, context: { input, engineOutput, narrative }, history: nextMessages.slice(0, -1) }),
+        body: JSON.stringify({ question: q, modelId, context: { input, engineOutput, narrative }, history: nextMessages.slice(0, -1) }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer ?? "No answer returned." }]);
