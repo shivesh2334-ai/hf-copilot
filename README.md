@@ -30,7 +30,7 @@ diagnostic or prescribing authority.
 ```bash
 npm install
 cp .env.example .env.local
-# fill in ANTHROPIC_API_KEY (required); Supabase vars optional
+# fill in ANTHROPIC_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, GROQ_API_KEY (at least one is required); Supabase vars optional
 npm run dev
 ```
 
@@ -53,7 +53,9 @@ Visit http://localhost:3000.
    - vercel.com → Add New Project → Import the GitHub repo.
    - Framework preset: Next.js (auto-detected).
    - Add environment variables under Project Settings → Environment Variables:
-     - `ANTHROPIC_API_KEY`
+     - `ANTHROPIC_API_KEY` (if using Claude)
+     - `GOOGLE_GENERATIVE_AI_API_KEY` (if using Gemini)
+     - `GROQ_API_KEY` (if using Groq)
      - `ANTHROPIC_MODEL` (optional, defaults to `claude-sonnet-4-6`)
      - `NEXT_PUBLIC_SUPABASE_URL` (optional)
      - `SUPABASE_SERVICE_ROLE_KEY` (optional)

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
+import { generateAIResponse } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 interface AskBody {
   question: string;
+  modelId?: string;
   context: {
     input: unknown;
     engineOutput: unknown;
@@ -21,19 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "question is required" }, { status: 400 });
     }
 
-    const anthropic = getAnthropicClient();
-    const msg = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 1200,
-      system:
-        "You are a cardiology decision-support query bot for a consultant cardiologist, answering " +
+    const answer = await generateAIResponse(
+      body.modelId || "anthropic:claude-3-5-sonnet-20240620",
+      "You are a cardiology decision-support query bot for a consultant cardiologist, answering " +
         "follow-up questions about a specific heart failure case. Ground every answer in the case " +
         "context provided (patient input + deterministic engine output + narrative). If the question " +
         "needs information not in the case (e.g. a lab result not provided), say so and ask for it " +
         "rather than inventing values. Keep answers focused and clinically precise. Always end with a " +
         "brief reminder that this is decision support, not a substitute for the treating physician's " +
         "judgement, only when the answer involves a treatment/dosing recommendation.",
-      messages: [
+      [
         {
           role: "user",
           content: `CASE CONTEXT:\n${JSON.stringify(body.context, null, 2)}`,
@@ -41,10 +39,9 @@ export async function POST(req: NextRequest) {
         ...(body.history ?? []).map((h) => ({ role: h.role, content: h.content })),
         { role: "user", content: body.question },
       ],
-    });
+      1200
+    );
 
-    const textBlock = msg.content.find((b) => b.type === "text");
-    const answer = textBlock && "text" in textBlock ? textBlock.text : "";
     return NextResponse.json({ answer });
   } catch (err) {
     console.error(err);

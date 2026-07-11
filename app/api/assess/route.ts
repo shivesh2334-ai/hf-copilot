@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runHFEngine } from "@/lib/hfEngine";
 import { HFPatientInput } from "@/lib/types";
-import { getAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
+import { generateAIResponse } from "@/lib/llm";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const input = (await req.json()) as HFPatientInput;
+    const { input, modelId } = await req.json() as { input: HFPatientInput; modelId?: string };
 
     if (!input?.complaints || !input?.examinationFindings) {
       return NextResponse.json({ error: "complaints and examinationFindings are required" }, { status: 400 });
@@ -19,12 +19,9 @@ export async function POST(req: NextRequest) {
 
     let narrative = "";
     try {
-      const anthropic = getAnthropicClient();
-      const msg = await anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 1800,
-        system:
-          "You are a cardiology clinical decision-support assistant used by a consultant cardiologist, " +
+      narrative = await generateAIResponse(
+        modelId || "anthropic:claude-3-5-sonnet-20240620",
+        "You are a cardiology clinical decision-support assistant used by a consultant cardiologist, " +
           "focused on heart failure. You are given (a) structured patient data and (b) the output of a " +
           "deterministic HF classification/staging/management engine. Write a concise, clinician-facing " +
           "note that synthesizes this into a clear working assessment and plan, organized under: " +
@@ -37,7 +34,7 @@ export async function POST(req: NextRequest) {
           "a qualified physician, not a final prescription — do not state exact drug doses beyond what " +
           "the engine output already specifies; note that all doses/eligibility must be confirmed by the " +
           "treating physician against current protocols.",
-        messages: [
+        [
           {
             role: "user",
             content: `PATIENT INPUT:\n${JSON.stringify(input, null, 2)}\n\nENGINE OUTPUT:\n${JSON.stringify(
@@ -47,11 +44,10 @@ export async function POST(req: NextRequest) {
             )}\n\nWrite the clinical note.`,
           },
         ],
-      });
-      const textBlock = msg.content.find((b) => b.type === "text");
-      narrative = textBlock && "text" in textBlock ? textBlock.text : "";
+        1800
+      );
     } catch (aiErr) {
-      console.error("Claude synthesis failed:", aiErr);
+      console.error("AI synthesis failed:", aiErr);
       narrative = "";
     }
 
